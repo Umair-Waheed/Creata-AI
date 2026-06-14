@@ -1,0 +1,14 @@
+import React from 'react'
+import { Outlet } from 'react-router-dom'
+
+const Layout = () => {
+  return (
+    <div>
+      <h1>Layout</h1>
+      {/* outlet help to render child routes where we dont add linksor paths with '/' */}
+      <Outlet/> 
+    </div>
+  )
+}
+
+export default Layout
