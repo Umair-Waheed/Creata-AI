@@ -1,5 +1,5 @@
 import React from 'react'
-import {PricingTable} from "@clerk/react"
+import {PricingTable} from "@clerk/clerk-react"
 const PricePlan = () => {
   return (
     <div className="max-w-2xl mx-auto z-20 my-30">

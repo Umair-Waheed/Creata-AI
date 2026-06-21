@@ -10,7 +10,7 @@ import RemoveBackground from "./pages/RemoveBackground"
 import RemoveObject from "./pages/RemoveObject"
 import ReviewResume from "./pages/ReviewResume"
 import Community from "./pages/Community"
-import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/react'
+import { SignInButton, SignUpButton, UserButton } from '@clerk/clerk-react'
 
 const App = () => {
   return (
