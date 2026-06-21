@@ -2,7 +2,7 @@ import React from 'react'
 import {assets} from "../assets/assets"
 import {useNavigate} from 'react-router-dom'
 import {ArrowRight} from "lucide-react"
-import {Show, SignInButton,useClerk,UserButton,useUser} from "@clerk/react"
+import { SignInButton,useClerk,UserButton,useUser} from "@clerk/clerk-react"
 
 const Navbar = () => {
   const navigate = useNavigate()
