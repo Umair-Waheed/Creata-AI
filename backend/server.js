@@ -2,8 +2,9 @@ import express from "express"
 import cors from "cors"
 import "dotenv/config"
 import { clerkMiddleware } from '@clerk/express'
-import aiRoutes from "./routes/aiRoutes.js"
 import connectCloudinary from "./configs/cloudinary.js"
+import userRouter from "./routes/userRoutes.js"
+import aiRouter from "./routes/aiRoutes.js"
 
 const app=express()
 
@@ -21,8 +22,8 @@ app.get("/",(req,res)=>{
 // Every route we can create after getAuth(0) is protecting
 // app.use(getAuth())
 
-app.use('/api/ai',aiRoutes)
-
+app.use('/api/ai', aiRouter)
+app.use('/api/user',userRouter)
 const PORT= process.env.PORT || 3000;
 app.listen(PORT,()=>{
     console.log(`Server is running on port: ${PORT}`);
