@@ -3,23 +3,38 @@ import sql from "../configs/db.js";
 import { clerkClient, getAuth } from "@clerk/express";
 import axios from "axios"
 import {v2 as cloudinary} from "cloudinary";
+// import fs from "fs";
+// import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import fs from "fs";
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+import PDFParser from "pdf2json";
 
-const extractTextFromPDF = async (buffer) => {
-  const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) });
-  const pdfDoc = await loadingTask.promise;
+const extractTextFromPDF = (buffer) => {
+  return new Promise((resolve, reject) => {
+    const pdfParser = new PDFParser();
 
-  let fullText = "";
-  for (let i = 1; i <= pdfDoc.numPages; i++) {
-    const page = await pdfDoc.getPage(i);
-    const tokenizedText = await page.getTextContent();
-    const pageText = tokenizedText.items.map((item) => item.str).join(" ");
-    fullText += pageText + "\n";
-  }
+    pdfParser.on("pdfParser_dataError", (err) => {
+      reject(err.parserError);
+    });
 
-  return fullText;
+    pdfParser.on("pdfParser_dataReady", (pdfData) => {
+      const text = pdfData.Pages.map((page) =>
+        page.Texts.map((t) => {
+          const raw = t.R.map((r) => r.T).join("");
+          try {
+            return decodeURIComponent(raw); // safe decode
+          } catch {
+            return raw; // fallback to raw if decode fails
+          }
+        }).join(" ")
+      ).join("\n");
+      resolve(text);
+    });
+
+    pdfParser.parseBuffer(buffer);
+  });
 };
+
+
 const AI = new OpenAI({
     apiKey: process.env.GEMINI_API_KEY,
     baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/"
@@ -243,7 +258,7 @@ const resumeReview = async (req, res) => {
       });
     }
 
-    // ✅ Read and extract text from PDF
+    // Read and extract text from PDF
     const dataBuffer = fs.readFileSync(resume.path);
     const resumeText = await extractTextFromPDF(dataBuffer);
 
@@ -270,7 +285,7 @@ Content:\n\n${resumeText}`;
     await sql`INSERT INTO creations (user_id, prompt, content, type)
       VALUES (${userId}, 'Review the uploaded resume', ${content}, 'resume-review')`;
 
-    // ✅ Clean up uploaded temp file
+    // Clean up uploaded temp file
     fs.unlinkSync(resume.path);
 
     return res.json({ success: true, content });
