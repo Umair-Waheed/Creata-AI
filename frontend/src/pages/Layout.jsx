@@ -12,9 +12,9 @@ const Layout = () => {
 
   return user ? (
     <div className="flex flex-col items-start justify-start h-screen">
-      <nav className="w-full px-8 min-h-14 flex items-center justify-between
-      border-b border-gray-200 ">
-        <img src={assets.logo} className="cursor-pointer w-32 sm:w-44" alt="logo" onClick={()=>navigate('/')}/>
+      <nav className="w-full px-8 h-16 flex items-center justify-between
+      border-b border-gray-200 shrink-0">
+        <img src={assets.logo} className="cursor-pointer w-32 sm:w-44 object-contain" alt="logo" onClick={()=>navigate('/')}/>
 
         {
           sidebar ? <X onClick={()=> setSidebar(false)} className="w-6 h-6 text-gray-600 sm:hidden" />
@@ -24,12 +24,18 @@ const Layout = () => {
       </nav>
 
       <div className="flex-1 w-full flex h-[calc(100vh-64px)]">
-        
+        {/* Overlay — only shows on mobile when sidebar open */}
+        {sidebar && (
+          <div
+            className="fixed inset-0 z-40 bg-black/40 sm:hidden"
+            onClick={() => setSidebar(false)}
+          />
+        )}
         {/* sidebar show on left side */}
         <Sidebar sidebar={sidebar} setSidebar={setSidebar}/>
       
         {/* outlet is the links or childern or layout route for ai tools show on right side */}
-        <div className="flex-1 bg-[#F4F7FB]">
+        <div className="flex-1 bg-[#F4F7FB] overflow-auto">
           <Outlet/> 
         </div>
       

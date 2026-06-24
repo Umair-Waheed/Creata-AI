@@ -3,9 +3,23 @@ import sql from "../configs/db.js";
 import { clerkClient, getAuth } from "@clerk/express";
 import axios from "axios"
 import {v2 as cloudinary} from "cloudinary";
-import fs from "fs"
-// import pdf from 'pdf-parse/lib/pdf-parse.js'
-import * as pdfParse from 'pdf-parse';
+import fs from "fs";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+
+const extractTextFromPDF = async (buffer) => {
+  const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) });
+  const pdfDoc = await loadingTask.promise;
+
+  let fullText = "";
+  for (let i = 1; i <= pdfDoc.numPages; i++) {
+    const page = await pdfDoc.getPage(i);
+    const tokenizedText = await page.getTextContent();
+    const pageText = tokenizedText.items.map((item) => item.str).join(" ");
+    fullText += pageText + "\n";
+  }
+
+  return fullText;
+};
 const AI = new OpenAI({
     apiKey: process.env.GEMINI_API_KEY,
     baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/"
@@ -27,18 +41,21 @@ const generateArticle=async(req,res)=>{
             return res.json({success:false, message:"Limit reached!. Upgrade your plan to continue."});
         }
 
+        const targetWords = parseInt(length) || 800;
+        const maxTokens = Math.round(targetWords <= 800 ? targetWords * 3.0 : targetWords * 2.5);
+
         const response = await AI.chat.completions.create({
-            model: "gemini-3.5-flash",
+            model: "gemini-2.5-flash",
             messages: [
                 {   role: "user",
                     content: prompt 
                 },
             ],
             temperature:0.7,
-            max_tokens: length
+            max_tokens: maxTokens
         });
         const content= response.choices[0].message.content;
-
+        
         await sql `INSERT INTO creations (user_id, prompt, content, type)
         VALUES (${userId}, ${prompt}, ${content}, 'article')`;
 
@@ -73,15 +90,14 @@ const generateBlogTitle=async(req,res)=>{
         }
 
         const response = await AI.chat.completions.create({
-            model: "gemini-3.5-flash",
+            model: "gemini-2.5-flash",
             messages: [
                 {   role: "user",
-                    content: prompt 
+                    content: prompt
                 },
             ],
-            temperature:0.7,
+            temperature:0.8,
             // means max blog title character is 100
-            max_tokens: 100
         });
         const content= response.choices[0].message.content;
 
@@ -146,7 +162,7 @@ const removeImageBackground = async(req,res)=>{
     try {
         
         const {userId} = getAuth(req);
-        const {image}=req.file;
+        const image=req.file;
         const plan = req.plan; 
 
         if(plan !== 'premium'){
@@ -165,7 +181,7 @@ const removeImageBackground = async(req,res)=>{
             });            
 
         await sql `INSERT INTO creations (user_id, prompt, content, type)
-        VALUES (${userId},"Remove background from image", ${secure_url}, 'image')`;
+        VALUES (${userId},'Remove background from image', ${secure_url}, 'image')`;
 
         return res.json({success:true, content:secure_url})
 
@@ -180,12 +196,12 @@ const removeImageObject = async(req,res)=>{
         
         const {userId} = getAuth(req);
         const {object} = req.body;
-        const {image}=req.file;
+        const image = req.file;
         const plan = req.plan; 
 
         if(plan !== 'premium'){
             return res.json({success:false, message:"Upgrade your plan, this feature is only available for premium subscriptions "});
-        }
+        }                                                                 
 
             const { public_id } = await cloudinary.uploader.upload(image.path,{                
                 folder: "CREATA-ai",
@@ -207,51 +223,62 @@ const removeImageObject = async(req,res)=>{
     }
 }
 
-const resumeReview = async(req,res)=>{
-    try {
-        
-        const {userId} = getAuth(req);
-        const resume=req.file;
-        const plan = req.plan; 
+const resumeReview = async (req, res) => {
+  try {
+    const { userId } = getAuth(req);
+    const resume = req.file;
+    const plan = req.plan;
 
-        if(plan !== 'premium'){
-            return res.json({success:false, message:"Upgrade your plan, this feature is only available for premium subscriptions "});
-        }
-            // check resume size not greater then 5MB
-        if(resume.size > 5 * 1024 * 1024){
-            return res.json({success:false,message:"Resume file size exceeds allowed size (5MB)."})
-
-        }
-            // here we parse resume to extract their tex using file system(fs)
-            // This line reads the contents of the file at resume.path and stores it as raw binary data (Buffer) in the dataBuffer variable.
-        const dataBuffer = fs.readFileSync(resume.path)
-        const pdfData= await pdfParse.default(dataBuffer)
-
-        const prompt=`Review the following resume and provide contructive 
-        feedback on its strengths, weaknesses, and area for improvement. Resume
-        Content:\n\n${pdfData.text}`
-
-        const response = await AI.chat.completions.create({
-            model: "gemini-3.5-flash",
-            messages: [
-                {   role: "user",
-                    content: prompt 
-                },
-            ],
-            temperature:0.7,
-            max_tokens: 1000,
-        });
-        const content= response.choices[0].message.content;
-
-        await sql `INSERT INTO creations (user_id, prompt, content, type)
-        VALUES (${userId},'Review the uploaded resume', ${content}, 'resume-review')`;
-
-        return res.json({success:true,content})
-
-    } catch (error) {
-        console.log(error.message);
-        return res.json({success:false, message: error.message});
+    if (plan !== "premium") {
+      return res.json({
+        success: false,
+        message: "Upgrade your plan, this feature is only available for premium subscriptions",
+      });
     }
+
+    if (resume.size > 5 * 1024 * 1024) {
+      return res.json({
+        success: false,
+        message: "Resume file size exceeds allowed size (5MB).",
+      });
+    }
+
+    // ✅ Read and extract text from PDF
+    const dataBuffer = fs.readFileSync(resume.path);
+    const resumeText = await extractTextFromPDF(dataBuffer);
+
+    if (!resumeText.trim()) {
+      return res.json({
+        success: false,
+        message: "Could not extract text from the PDF. Make sure it's not a scanned image.",
+      });
+    }
+
+    const prompt = `Review the following resume and provide constructive 
+feedback on its strengths, weaknesses, and areas for improvement. Resume
+Content:\n\n${resumeText}`;
+
+    const response = await AI.chat.completions.create({
+      model: "gemini-2.5-flash",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      max_tokens: 8000,
+    });
+
+    const content = response.choices[0].message.content;
+
+    await sql`INSERT INTO creations (user_id, prompt, content, type)
+      VALUES (${userId}, 'Review the uploaded resume', ${content}, 'resume-review')`;
+
+    // ✅ Clean up uploaded temp file
+    fs.unlinkSync(resume.path);
+
+    return res.json({ success: true, content });
+
+  } catch (error) {
+    console.log(error.message);
+    return res.json({ success: false, message: error.message });
+  }
 }
 
 
