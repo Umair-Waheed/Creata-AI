@@ -20,11 +20,13 @@ const Sidebar = ({sidebar,setSidebar}) => {
   const {signOut,openUserProfile}=useClerk();
 
   return (
-    <div className={`w-60 bg-white border-r border-gray-200 flex
-        flex-col justify-between items-center max-sm:absoulte top-14
-        bottom-0 ${sidebar? 'translate-x-0' :
-            'max-sm:translate-x-full'} transition-all duration-300
-            ease-in-out`}>
+    <div className={`bg-white border-r border-gray-200 flex flex-col justify-between 
+      items-center z-50 transition-all duration-300 ease-in-out overflow-hidden
+      fixed top-14 bottom-0 sm:static
+      ${sidebar
+        ? 'w-60 translate-x-0'
+        : 'w-0 -translate-x-full sm:w-60 sm:translate-x-0'
+      }`}>
 
               <div className="my-7 w-full">
                 <img src={user?.imageUrl} alt="user-image" className="w-13 rounded-full mx-auto"/> 
