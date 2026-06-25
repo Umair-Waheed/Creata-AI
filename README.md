@@ -57,19 +57,18 @@ This platform allows **free users** to generate articles and blog titles, while 
 
 | Tool | Access | Powered By |
 |---|---|---|
-| Article Writing | Free | Gemini 2.5 Flash |
-| Blog Title Generator | Free | Gemini 2.5 Flash |
-| Image Generation | Premium | Stability AI |
-| Background Removal | Premium | Stability AI |
-| Object Removal | Premium | Stability AI |
-| Resume Review | Premium | Gemini 2.5 Flash |
+| Article Writing | Free | Gemini |
+| Blog Title Generator | Free | Gemini |
+| Image Generation | Premium | Gemini |
+| Background Removal | Premium | Gemini |
+| Object Removal | Premium | Gemini |
+| Resume Review | Premium | Gemini |
 
 ---
 
 ## 🔐 Authentication Flow
 
 - Sign up / Sign in via **Clerk**
-- Google OAuth supported
 - Premium plan upgrade via **Clerk subscription**
 - Role-based access — free vs premium features controlled server-side
 
